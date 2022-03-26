@@ -12,7 +12,7 @@ from keras.optimizers import Adam, SGD, Nadam, RMSprop
 from keras.layers.core import Dense, Activation, Dropout, Flatten
 
 from siamesenet import SiameseNetwork
-from distances_utils import contrastive_loss
+from utils import contrastive_loss
 
 
 # Training parameters
@@ -96,7 +96,7 @@ siamese_model.compile(loss=contrastive_loss, optimizer=adam, metrics=['mae'])
 """ Training
 """
 
-siamese_model.fit(x_train_1, x_train_2, y_train, n_epochs=n_epochs, batch_size=batch_size, validation_split=validation_split, checkpoint_path=checkpoint_path, log_path=log_path)
+siamese_model.fit(x_train_1, x_train_2, y_train, epochs=n_epochs, batch_size=batch_size)
 
 
 """ Using the trained encoder

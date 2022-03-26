@@ -21,7 +21,7 @@ from keras.callbacks import TensorBoard, CSVLogger, LearningRateScheduler
 from keras.layers.merge import concatenate
 from keras.layers import Input
 
-from distances_utils import euclidean_distance, eucl_dist_output_shape
+from utils import euclidean_distance, eucl_dist_output_shape
 
 
 class SiameseNetwork:
@@ -38,12 +38,12 @@ class SiameseNetwork:
 
         # Initialize siamese model
         self.siamese_model = None
-        self.__initialize_siamese_model()
+        self.build()
 
 
-    def __initialize_siamese_model(self):
+    def build(self):
         """
-        Initialize the siamese model structure using the input encoder model
+        Initialize the siamese model structure using the input encoder network
         """
 
         # Define the tensors for the two input images
@@ -74,57 +74,67 @@ class SiameseNetwork:
         self.siamese_model.compile(*args, **kwargs)
 
 
-    def fit(self, *args, **kwargs):
+    def fit(self,
+        X_train_1,
+        X_train_2,
+        y_train,
+        epochs=200,
+        batch_size=32
+        ):
         """
         Trains the model
+
+        :param x_train_1: data points fed to the first sub-network
+        :type 2-D Numpy array of float values
+        :param x_train_2: data points fed to the second sub-network
+        :type 2-D Numpy array of float values
+        :param y_train: labels of each data points pair
+        :type 2-D Numpy array of int values
+        :param epochs: number of training epochs
+        :type int
+        :param batch_size: size of batches used at each forward/backward propagation
+        :type int
+        :return -
+        :raises: -
         """
-
-        x_train_1 = args[0]
-        x_train_2 = args[1]
-        y_train = args[2]
-
-        validation_split= kwargs.pop('validation_split')
-        batch_size = kwargs.pop('batch_size')
-        n_epochs = kwargs.pop('n_epochs')
-        checkpoint_path = kwargs.pop('checkpoint_path')
-        log_path = kwargs.pop('log_path')
 
         ts = datetime.now().strftime('%d%m%Y_%H:%M')
 
         # This is used to save the best model, currently monitoring val_mape
-        filepath = checkpoint_path+"/Siamese.best"+ts+".hdf5"
+        filepath = "checkpoint/Siamese.best"+ts+".hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 
         # Log file Path
-        logfile = log_path+"/"+ts+".log"
+        logfile = "log/"+ts+".log"
 
         #schedule = step_decay_schedule(initial_lr=1e-5, decay_factor=0.9, step_size=5)
 
-        early_stopping_monitor = EarlyStopping(patience=20)
+        # Stop training if error does not improve within 20 iterations
+        early_stopping_monitor = EarlyStopping(patience=20, restore_best_weights=True)
 
         #.... Siamese
-        history_callback = self.siamese_model.fit([x_train_1, x_train_2], y_train, epochs=n_epochs, batch_size=batch_size, validation_split=validation_split,
+        history_callback = self.siamese_model.fit([X_train_1, X_train_2], y_train, epochs=epochs, batch_size=batch_size, validation_split=0.2,
                                      verbose=1,
                                      callbacks=[#PlotLossesKeras(),
                                      early_stopping_monitor, checkpoint, CSVLogger(logfile)])
                                                #LRTensorBoard(log_dir="log/tb_log")])
 
-    def restore(self, encoder_model, checkpoint_path):
+    def restore(self, encoder_model):
         """
         Restore a previously trained siamese model
 
-        :param checkpoint_path: Path to the checkpoint file
-        :type string
+        :param encoder_model: encoding sub-network structure
+        :type Keras Model
         :return: the trained encoding sub-model
-        :rtype: Keras model
+        :rtype: Keras Model
         """
 
         # Load saved model
-        trained_siamese_model = load_model(checkpoint_path, compile=False)
+        self.siamese_model = load_model(checkpoint_path, compile=False)
 
         # Extract just the encoding sub model
         #encoder_model = trained_siamese_model.get_layer('sequential')
-        model = encoder_model(trained_siamese_model.output.shape)
+        model = encoder_model(self.siamese_model.output.shape)
         model.load_weights(checkpoint_path, by_name=True)
 
 
