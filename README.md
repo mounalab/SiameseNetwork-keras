@@ -10,7 +10,7 @@ In the example,
 
 ## Prequisites
 
-Prequisites is defined in requirements.txt file  
+Prequisites are defined in requirements.txt file  
 
 
 ## Running Example
